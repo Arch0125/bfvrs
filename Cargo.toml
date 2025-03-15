@@ -1,0 +1,15 @@
+[package]
+name = "bfv"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rand = "0.8.5"
+rand_distr = "0.4.3"
+num-bigint = { version = "0.4", features = ["rand"] }
+num-traits = "0.2"
+num-integer = "0.1"
+log = "0.4"
+rayon = "1.7"
+
+
