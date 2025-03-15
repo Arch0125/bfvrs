@@ -2,6 +2,7 @@ use num_bigint::{BigInt, BigUint};
 use num_traits::{Euclid, One, ToPrimitive, Zero};
 use rand::Rng;
 use std::ops::{Div, Mul, Rem, Sub};
+use num_integer::Integer;
 
 use crate::generate_prime::is_prime;
 
@@ -14,6 +15,24 @@ pub fn modinv(a: BigInt, m: BigInt) -> Result<BigInt, String> {
         Ok(x.rem_euclid(&m))
     }
 }
+
+pub fn canonical_mod(x: &BigInt, modulus: &BigInt) -> BigInt {
+    let mut r = x % modulus;
+    if r < BigInt::zero() {
+        r += modulus;
+    }
+    r
+}
+
+pub fn div_round(numer: &BigInt, denom: &BigInt) -> BigInt {
+    let (d, r) = numer.div_rem(denom);
+    if &r * 2 >= *denom {
+        d + BigInt::one()
+    } else {
+        d
+    }
+}
+
 
 fn extended_gcd(a: BigInt, b: BigInt) -> (BigInt, BigInt, BigInt) {
     if a.is_zero() {

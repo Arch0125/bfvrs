@@ -1,8 +1,10 @@
+use crate::helper::canonical_mod;
 use crate::ntt::{intt, ntt};
 use num_bigint::BigInt;
 use num_traits::{One, ToPrimitive, Zero};
 use rand::distributions::{Distribution, Uniform};
 use rand::Rng;
+use rand_distr::Normal;
 use std::ops::Add;
 use std::ops::Rem;
 
@@ -75,29 +77,31 @@ impl Poly {
             self.in_ntt = domain;
             return;
         }
-
+        
         let mut rng = rand::thread_rng();
         match dist_type {
             0 => {
+                
                 let half_bound = (bound / BigInt::from(2)).to_i64().unwrap_or(1);
-                let range = Uniform::new(-half_bound, half_bound);
+                let range = rand::distributions::Uniform::new(-half_bound, half_bound);
                 self.f = (0..self.n)
-                    .map(|_| BigInt::from(rng.sample(range)) % bound)
+                    .map(|_| canonical_mod(&BigInt::from(rng.sample(range)), bound))
                     .collect();
-            }
+            },
             1 => {
                 if sigma == 0.0 {
                     self.f = vec![BigInt::zero(); self.n];
                 } else {
+                    let normal = Normal::new(mu, sigma).unwrap();
                     self.f = (0..self.n)
                         .map(|_| {
-                            let sample = rng.sample(rand_distr::Normal::new(mu, sigma).unwrap());
-
-                            BigInt::from(sample.round() as i64) % bound
+                            let sample = rng.sample(normal);
+                            let s = BigInt::from(sample.round() as i64);
+                            canonical_mod(&s, bound)
                         })
                         .collect();
                 }
-            }
+            },
             _ => panic!("Invalid distribution type"),
         }
         self.in_ntt = domain;
@@ -237,18 +241,10 @@ impl Poly {
     }
 
     pub fn modulo(&self, modulus: &BigInt) -> Poly {
-        let result_f = self
-            .f
-            .iter()
-            .map(|x| {
-                let mut result = x % modulus;
-                if result < BigInt::zero() {
-                    result += modulus;
-                }
-                result
-            })
+        let result_f = self.f.iter()
+            .map(|x| canonical_mod(x, modulus))
             .collect();
-
+    
         Poly {
             n: self.n,
             q: self.q.clone(),

@@ -1,3 +1,4 @@
+use crate::helper::{canonical_mod, div_round};
 use crate::ntt::{intt, ntt};
 use num_bigint::BigInt;
 use num_integer::Integer;
@@ -269,24 +270,27 @@ impl BFV {
     }
 
     pub fn decrypt(&self, ct: &[Poly]) -> Poly {
+        
         let m = (ct[1].mul(&self.sk).unwrap() + ct[0].clone()).unwrap();
-
+    
+        
+        let scaled_coeffs = m.f.iter()
+            .map(|x| div_round(&(&self.t * x), &self.q))
+            .collect();
+        
         let m_scaled = Poly {
             n: self.n,
-            q: self.t.clone(),
+            q: self.t.clone(),  
             np: self.qnp.clone(),
-            f: m.f
-                .iter()
-                .map(|x| {
-                    let numer = &self.t * x;
-                    Self::div_round(&numer, &self.q)
-                })
-                .collect(),
+            f: scaled_coeffs,
             in_ntt: false,
         };
-
+        
         m_scaled.modulo(&self.t)
     }
+    
+    
+    
 
     pub fn homomorphic_addition(&self, ct0: &[Poly], ct1: &[Poly]) -> Vec<Poly> {
         let ct0_b = (ct0[0].clone() + ct1[0].clone()).unwrap();

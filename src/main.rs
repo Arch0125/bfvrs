@@ -6,7 +6,7 @@ use num_traits::{One, ToPrimitive, Zero};
 use rand::Rng;
 
 fn main() {
-    let pd = 1;
+    let pd = 0;
 
     let (t, n, q, psi, psiv, w, wv) = if pd == 0 {
         let t = BigInt::from(16);
@@ -31,7 +31,7 @@ fn main() {
 
     let mu = 0.0;
 
-    let sigma_values = vec![0.1, 1.0, 10.0, 10000.0];
+    let sigma_values = vec![1.6, 5.0, 10.0];
 
     let t_relin = BigInt::from(256);
     let p = q.pow(3) + BigInt::one();
