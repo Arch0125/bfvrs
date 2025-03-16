@@ -1,7 +1,8 @@
 use num_bigint::{BigInt, BigUint};
+use num_rational::BigRational;
 use num_traits::{Euclid, One, ToPrimitive, Zero};
 use rand::Rng;
-use std::ops::{Div, Mul, Rem, Sub};
+use std::{cmp::Ordering, ops::{Div, Mul, Rem, Sub}};
 use num_integer::Integer;
 
 use crate::generate_prime::is_prime;
@@ -52,6 +53,25 @@ pub fn gcd(n1: BigInt, n2: BigInt) -> BigInt {
         a = temp;
     }
     a
+}
+
+pub fn rational_round(r: BigRational) -> BigInt {
+    // Compute quotient and remainder of numer/denom.
+    let (quotient, remainder) = r.numer().div_rem(r.denom());
+    // Multiply remainder by 2.
+    let double_rem: BigInt = &remainder * 2;
+    match double_rem.cmp(r.denom()) {
+        Ordering::Greater => quotient + BigInt::one(),
+        Ordering::Less => quotient,
+        Ordering::Equal => {
+            // Exactly half: round to even.
+            if quotient.is_even() {
+                quotient
+            } else {
+                quotient + BigInt::one()
+            }
+        }
+    }
 }
 
 pub fn int_reverse(a: usize, n: usize) -> usize {

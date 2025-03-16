@@ -5,7 +5,7 @@ use num_traits::{One, ToPrimitive, Zero};
 use rand::distributions::{Distribution, Uniform};
 use rand::Rng;
 use rand_distr::Normal;
-use std::ops::Add;
+use std::ops::{Add, Sub};
 use std::ops::Rem;
 
 #[derive(Clone, Debug)]
@@ -48,6 +48,32 @@ impl Add for Poly {
             .iter()
             .zip(&other.f)
             .map(|(x, y)| (x + y) % &self.q)
+            .collect();
+
+        Ok(Poly {
+            n: self.n,
+            q: self.q.clone(),
+            np: self.np.clone(),
+            f: result_f,
+            in_ntt: self.in_ntt,
+        })
+    }
+}
+
+impl Sub for Poly {
+    type Output = Result<Poly, String>;
+
+    fn sub(self, other: Poly) -> Self::Output {
+        if self.in_ntt != other.in_ntt {
+            return Err("Polynomial Subtraction: Inputs must be in the same domain.".to_string());
+        }
+        if self.q != other.q {
+            return Err("Polynomial Subtraction: Inputs must have the same modulus.".to_string());
+        }
+        let result_f = self.f
+            .iter()
+            .zip(&other.f)
+            .map(|(x, y)| canonical_mod(&(x - y), &self.q))
             .collect();
 
         Ok(Poly {
@@ -154,6 +180,7 @@ impl Poly {
             in_ntt: self.in_ntt,
         })
     }
+    
 
     pub fn mul(&self, other: &Poly) -> Result<Poly, String> {
         if self.in_ntt != other.in_ntt {
@@ -281,8 +308,9 @@ impl Poly {
     }
 
     pub fn neg(&self) -> Poly {
-        let result_f = self.f.iter().map(|x| (-x) % &self.q).collect();
-
+        let result_f = self.f.iter()
+            .map(|x| canonical_mod(&(-x), &self.q))
+            .collect();
         Poly {
             n: self.n,
             q: self.q.clone(),

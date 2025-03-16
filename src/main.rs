@@ -31,7 +31,7 @@ fn main() {
 
     let mu = 0.0;
 
-    let sigma_values = vec![1.6, 5.0, 10.0];
+    let sigma_values = vec![0.0, 0.1, 1.0, 1.6];
 
     let t_relin = BigInt::from(256);
     let p = q.pow(3) + BigInt::one();
@@ -62,7 +62,7 @@ fn main() {
             evaluator.public_key_gen();
             evaluator.eval_key_gen_v1(t_relin.clone());
 
-            let n1 = 6;
+            let n1 = 4;
             let n2 = 5;
             let expected_sum = n1 + n2;
 

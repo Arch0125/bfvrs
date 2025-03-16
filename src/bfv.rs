@@ -2,12 +2,14 @@ use crate::helper::{canonical_mod, div_round};
 use crate::ntt::{intt, ntt};
 use num_bigint::BigInt;
 use num_integer::Integer;
+use num_rational::BigRational;
 use num_traits::{One, ToPrimitive, Zero};
 use poly::Poly;
 use rand::distributions::{Distribution, Uniform};
 use rand::Rng;
 use std::ops::Add;
 use std::os::unix::raw::pthread_t;
+use crate::helper::rational_round;
 
 use crate::poly;
 
@@ -48,21 +50,26 @@ impl BFV {
 
     pub fn int_decode(&self, m: &Poly) -> BigInt {
         let mut mr = BigInt::zero();
-
-        let k = std::cmp::min(8, m.f.len());
+        // Define the threshold: if t == 2, threshold is 2; otherwise, (t+1)/2.
         let thr = if self.t == BigInt::from(2) {
             BigInt::from(2)
         } else {
             (&self.t + BigInt::one()) / BigInt::from(2)
         };
-
-        for (i, c) in m.f.iter().take(k).enumerate() {
-            let c_ = if c >= &thr { -(&self.t - c) } else { c.clone() };
-            let two_pow_i = BigInt::from(2).pow(i as u32);
-            mr += c_ * two_pow_i;
+    
+        for (i, c) in m.f.iter().enumerate() {
+            let c_val = if c >= &thr {
+                // Interpret this coefficient as negative.
+                -(&self.t - c)
+            } else {
+                c.clone()
+            };
+            mr += c_val * BigInt::from(2).pow(i as u32);
         }
         mr
     }
+    
+    
 
     pub fn eval_key_gen_v2(&mut self, p: BigInt) {
         self.p = p.clone();
@@ -270,22 +277,28 @@ impl BFV {
     }
 
     pub fn decrypt(&self, ct: &[Poly]) -> Poly {
-        
+        // Step 1: Compute m = ct[1] * sk + ct[0]
         let m = (ct[1].mul(&self.sk).unwrap() + ct[0].clone()).unwrap();
     
-        
+        // Step 2: For each coefficient, compute exact scaled value (t*x/q)
+        // and then round using banker's rounding.
         let scaled_coeffs = m.f.iter()
-            .map(|x| div_round(&(&self.t * x), &self.q))
+            .map(|x| {
+                let rat = BigRational::new((&self.t * x).clone(), self.q.clone());
+                // Use our banker's rounding function.
+                rational_round(rat)
+            })
             .collect();
-        
+    
         let m_scaled = Poly {
             n: self.n,
-            q: self.t.clone(),  
+            q: self.t.clone(),  // new modulus is t (plaintext modulus)
             np: self.qnp.clone(),
             f: scaled_coeffs,
             in_ntt: false,
         };
-        
+    
+        // Step 3: Reduce each coefficient modulo t.
         m_scaled.modulo(&self.t)
     }
     
@@ -295,6 +308,13 @@ impl BFV {
     pub fn homomorphic_addition(&self, ct0: &[Poly], ct1: &[Poly]) -> Vec<Poly> {
         let ct0_b = (ct0[0].clone() + ct1[0].clone()).unwrap();
         let ct1_b = (ct0[1].clone() + ct1[1].clone()).unwrap();
+        vec![ct0_b, ct1_b]
+    }
+
+
+    pub fn homomorphic_subtraction(&self, ct0: &[Poly], ct1: &[Poly]) -> Vec<Poly> {
+        let ct0_b = (ct0[0].clone() - ct1[0].clone()).unwrap();
+        let ct1_b = (ct0[1].clone() - ct1[1].clone()).unwrap();
         vec![ct0_b, ct1_b]
     }
 
